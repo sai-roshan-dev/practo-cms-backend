@@ -15,6 +15,11 @@ COPY . .
 RUN npm run build
 RUN npx prisma generate
 
+# Copy and set up entrypoint script for migrations
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
 EXPOSE 3000
 
-CMD ["npm", "start"]
+# Use entrypoint script to run migrations before starting
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
