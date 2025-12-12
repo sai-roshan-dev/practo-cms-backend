@@ -11,9 +11,14 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build TypeScript and generate Prisma client
-RUN npm run build
+# Generate Prisma client first (before build)
 RUN npx prisma generate
+
+# Build TypeScript
+RUN npm run build
+
+# Copy generated Prisma client to dist folder (TypeScript doesn't copy it)
+RUN cp -r src/generated dist/generated || true
 
 # Copy and set up entrypoint script for migrations
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
