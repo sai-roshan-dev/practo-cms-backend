@@ -2,7 +2,7 @@ services:
   - type: web
     name: practo-cms-backend
     env: node
-    buildCommand: npm install && npm run build && npx prisma generate
+    buildCommand: npm install && npm run build && npx prisma generate && npx prisma migrate deploy
     startCommand: npm start
     envVars:
       - key: NODE_ENV
