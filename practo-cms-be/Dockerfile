@@ -1,7 +1,8 @@
 FROM node:18-alpine
 
 # Install OpenSSL and other required libraries for Prisma
-RUN apk add --no-cache openssl1.1-compat libc6-compat
+# Prisma requires OpenSSL 1.1.x for the query engine
+RUN apk add --no-cache openssl1.1-compat libc6-compat ca-certificates
 
 WORKDIR /app
 
