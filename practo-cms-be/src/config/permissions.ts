@@ -113,6 +113,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
 
   MEDICAL_REVIEWER: [
+    'create_topic',
     'assign_topic',
     'view_all_topics',
     'review_script',
