@@ -38,6 +38,15 @@ This guide will help you deploy the Practo CMS Backend to Render.
 - **Build Command**: `npm install && npm run build && npx prisma generate && npx prisma migrate deploy`
 - **Start Command**: `npm start`
 
+### Seeding default users (incl. OAuth test admins)
+
+This repo includes a seed script (`npm run prisma:seed`) that upserts default users.
+
+- If you have Render Shell access, you can run it manually.
+- If you **don’t** have Shell access, configure your Render build command to run the seed automatically after migrations:
+
+`npm install && npm run build && npx prisma generate && npx prisma migrate deploy && npm run prisma:seed`
+
 ### Environment Variables:
 
 Add the following environment variables in the Render dashboard:

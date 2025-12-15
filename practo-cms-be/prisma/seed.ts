@@ -20,12 +20,31 @@ interface SeedUser {
   city?: string;
 }
 
+// Emails that should be updated on every seed run (useful for OAuth test accounts)
+const FORCE_UPDATE_EMAILS = new Set<string>([
+  "roshan.neelam@gamyam.co",
+  "akshay.sharma@gamyam.co"
+]);
+
 const seedUsers: SeedUser[] = [
   // Super Admin
   {
     email: "admin@practo.com",
     firstName: "Super",
     lastName: "Admin",
+    role: UserRole.SUPER_ADMIN
+  },
+  // OAuth test users (Super Admin)
+  {
+    email: "roshan.neelam@gamyam.co",
+    firstName: "Roshan",
+    lastName: "Neelam",
+    role: UserRole.SUPER_ADMIN
+  },
+  {
+    email: "akshay.sharma@gamyam.co",
+    firstName: "Akshay",
+    lastName: "Sharma",
     role: UserRole.SUPER_ADMIN
   },
   // Medical Reviewer
@@ -98,7 +117,14 @@ async function main() {
   for (const userData of seedUsers) {
     const user = await prisma.user.upsert({
       where: { email: userData.email },
-      update: {},
+      update: FORCE_UPDATE_EMAILS.has(userData.email)
+        ? {
+            role: userData.role,
+            status: UserStatus.ACTIVE,
+            firstName: userData.firstName,
+            lastName: userData.lastName
+          }
+        : {},
       create: {
         ...userData,
         password: hashedPassword,
