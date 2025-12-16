@@ -82,17 +82,20 @@ export async function createTopic(input: CreateTopicInput) {
     }
   });
 
-  // Trigger notification for topic assignment (async, don't block)
-  const { NotificationService } = await import('../notifications/notifications.service.js');
-  NotificationService.enqueueEvent({
-    eventType: 'TOPIC_ASSIGNED',
-    entityId: topic.id,
-    entityType: 'TOPIC',
-    topicId: topic.id,
-    actorUserId: input.createdById,
-  }).catch((err) => {
+  // Trigger notification for topic assignment (direct processing)
+  try {
+    const { processNotificationSync } = await import('../notifications/simple-notifications.service.js');
+    await processNotificationSync({
+      eventType: 'TOPIC_ASSIGNED',
+      entityId: topic.id,
+      entityType: 'TOPIC',
+      topicId: topic.id,
+      actorUserId: input.createdById,
+    });
+    console.log('✅ Topic assignment notification processed');
+  } catch (err) {
     console.error('Failed to trigger topic assignment notification:', err);
-  });
+  }
 
   return topic;
 }
