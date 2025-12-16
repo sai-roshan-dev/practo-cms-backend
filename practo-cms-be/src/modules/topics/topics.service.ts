@@ -82,17 +82,17 @@ export async function createTopic(input: CreateTopicInput) {
     }
   });
 
-  // Trigger notification for topic assignment (direct processing)
+  // Trigger notification for topic assignment (Redis + Bull Queue)
   try {
-    const { processNotificationSync } = await import('../notifications/simple-notifications.service.js');
-    await processNotificationSync({
+    const { NotificationService } = await import('../notifications/notifications.service.js');
+    await NotificationService.enqueueEvent({
       eventType: 'TOPIC_ASSIGNED',
       entityId: topic.id,
       entityType: 'TOPIC',
       topicId: topic.id,
       actorUserId: input.createdById,
     });
-    console.log('✅ Topic assignment notification processed');
+    console.log('✅ Topic assignment notification queued');
   } catch (err) {
     console.error('Failed to trigger topic assignment notification:', err);
   }

@@ -21,6 +21,7 @@ import doctorPointerRoutes from "./modules/doctor-pointers/doctor-pointers.route
 import commentRoutes from "./modules/comments/comments.routes.js";
 import hubRoutes from "./modules/videos/hub.routes.js";
 import notificationRoutes from "./modules/notifications/notifications.routes.js";
+import testRoutes from "./routes/test.routes.js";
 
 const app = express();
 
@@ -88,6 +89,9 @@ app.use("/api/comments", commentRoutes);
 
 // Notification routes
 app.use("/api/notifications", notificationRoutes);
+
+// Test routes (temporarily enabled for production testing)
+app.use("/api/test", testRoutes);
 
 // Public Hub API (for mobile app)
 app.use("/api/v1/hub", hubRoutes);
