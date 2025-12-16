@@ -69,16 +69,31 @@ export async function createUserController(req: AuthRequest, res: Response) {
  */
 export async function getAllUsersController(req: AuthRequest, res: Response) {
   try {
-    const { role, status, page = '1', limit = '20' } = req.query;
+    const { 
+      role, 
+      status, 
+      page = '1', 
+      size,           // New: size parameter
+      limit = '20',   // Keep for backward compatibility
+      search,         // New: search parameter
+      sort = 'updatedAt',  // New: sort field
+      order = 'DESC'       // New: sort order
+    } = req.query;
 
     const filters: any = {};
     if (role) filters.role = role as UserRole;
     if (status) filters.status = status as UserStatus;
+    if (search) filters.search = search as string;
+
+    // Use size if provided, otherwise fall back to limit
+    const pageSize = size ? parseInt(size as string) : parseInt(limit as string);
 
     const result = await userService.getAllUsers(
       filters,
       parseInt(page as string),
-      parseInt(limit as string)
+      pageSize,
+      sort as string,
+      (order as 'ASC' | 'DESC') || 'DESC'
     );
 
     return res.json({ 
@@ -100,11 +115,12 @@ export async function getAllUsersController(req: AuthRequest, res: Response) {
  */
 export async function getDoctorsController(req: AuthRequest, res: Response) {
   try {
-    const doctors = await userService.getDoctors();
+    const result = await userService.getDoctors();
 
     return res.json({ 
       success: true, 
-      doctors 
+      doctors: result.doctors,
+      count: result.count
     });
   } catch (err: any) {
     console.error('Get doctors error:', err);

@@ -151,15 +151,55 @@ export async function updateUserStatus(userId: string, status: UserStatus) {
  * Get all users
  */
 export async function getAllUsers(
-  filters: { role?: UserRole; status?: UserStatus } = {},
+  filters: { 
+    role?: UserRole; 
+    status?: UserStatus; 
+    search?: string;  // New: search parameter
+  } = {},
   page = 1,
-  limit = 20
+  limit = 20,
+  sort = 'updatedAt',  // New: sort field
+  order: 'ASC' | 'DESC' = 'DESC'  // New: sort order
 ) {
   const skip = (page - 1) * limit;
 
   const where: any = {};
-  if (filters.role) where.role = filters.role;
-  if (filters.status) where.status = filters.status;
+  
+  // Build AND conditions array to properly combine all filters
+  const andConditions: any[] = [];
+  
+  // Role filter
+  if (filters.role) {
+    andConditions.push({ role: filters.role });
+  }
+  
+  // Status filter
+  if (filters.status) {
+    andConditions.push({ status: filters.status });
+  }
+  
+  // Search functionality - searches firstName, lastName, and email
+  if (filters.search) {
+    const searchTerm = filters.search.trim();
+    andConditions.push({
+      OR: [
+        { firstName: { contains: searchTerm, mode: 'insensitive' } },
+        { lastName: { contains: searchTerm, mode: 'insensitive' } },
+        { email: { contains: searchTerm, mode: 'insensitive' } }
+      ]
+    });
+  }
+  
+  // Apply AND conditions if any exist
+  if (andConditions.length > 0) {
+    where.AND = andConditions;
+  }
+
+  // Dynamic sorting - validate sort field
+  const orderBy: any = {};
+  const validSortFields = ['createdAt', 'updatedAt', 'firstName', 'lastName', 'email'];
+  const sortField = validSortFields.includes(sort) ? sort : 'updatedAt';
+  orderBy[sortField] = order.toLowerCase();
 
   const [users, total] = await Promise.all([
     prisma.user.findMany({
@@ -174,9 +214,10 @@ export async function getAllUsers(
         specialty: true,
         city: true,
         createdAt: true,
+        updatedAt: true,  // Added for sorting
         lastLoginAt: true
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy,
       skip,
       take: limit
     }),
@@ -187,6 +228,8 @@ export async function getAllUsers(
     users,
     total,
     page,
+    size: limit,      // New: include size in response
+    limit,            // Keep for backward compatibility
     totalPages: Math.ceil(total / limit)
   };
 }
@@ -195,19 +238,29 @@ export async function getAllUsers(
  * Get doctors (for topic assignment)
  */
 export async function getDoctors() {
-  return prisma.user.findMany({
-    where: {
-      role: UserRole.DOCTOR_CREATOR,
-      status: UserStatus.ACTIVE
-    },
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      email: true,
-      specialty: true,
-      city: true
-    },
-    orderBy: { firstName: 'asc' }
-  });
+  const where = {
+    role: UserRole.DOCTOR_CREATOR,
+    status: UserStatus.ACTIVE
+  };
+
+  const [doctors, count] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        specialty: true,
+        city: true
+      },
+      orderBy: { firstName: 'asc' }
+    }),
+    prisma.user.count({ where })
+  ]);
+
+  return {
+    doctors,
+    count
+  };
 }
