@@ -57,26 +57,86 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
     const recipients = Array.isArray(options.to) ? options.to : [options.to];
     
-    // Development: Log email to console
-    console.log('\n📧 ============================================');
-    console.log('📧 EMAIL NOTIFICATION (Development Mode)');
-    console.log('📧 ============================================');
-    console.log(`📧 To: ${recipients.join(', ')}`);
-    console.log(`📧 Subject: ${options.subject}`);
-    console.log('📧 Body (HTML):');
-    console.log(options.html);
-    if (options.text) {
-      console.log('📧 Body (Text):');
-      console.log(options.text);
+    // Check if we have email service configured
+    if (process.env.RESEND_API_KEY) {
+      return await sendWithResend(options, recipients);
+    } else if (process.env.AWS_ACCESS_KEY_ID && process.env.SES_FROM_EMAIL) {
+      return await sendWithAWSSES(options, recipients);
+    } else {
+      // Development: Log email to console
+      console.log('\n📧 ============================================');
+      console.log('📧 EMAIL NOTIFICATION (Development Mode)');
+      console.log('📧 ============================================');
+      console.log(`📧 To: ${recipients.join(', ')}`);
+      console.log(`📧 Subject: ${options.subject}`);
+      console.log('📧 Body (HTML):');
+      console.log(options.html);
+      console.log('📧 ============================================\n');
+      return true;
     }
-    console.log('📧 ============================================\n');
-    
-    // In production with Resend/AWS SES, this would actually send the email
-    // For now, we just log it so you can see what emails would be sent
-    
-    return true;
   } catch (error: any) {
     console.error('❌ Error in email service:', error);
+    return false;
+  }
+}
+
+/**
+ * Send email using Resend (easier setup)
+ */
+async function sendWithResend(options: EmailOptions, recipients: string[]): Promise<boolean> {
+  try {
+    // Dynamic import to avoid requiring Resend if not used
+    const { Resend } = await import('resend');
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    
+    await resend.emails.send({
+      from: process.env.FROM_EMAIL || 'noreply@practocms.com',
+      to: recipients,
+      subject: options.subject,
+      html: options.html,
+    });
+    
+    console.log(`✅ Email sent via Resend to: ${recipients.join(', ')}`);
+    return true;
+  } catch (error: any) {
+    console.error('❌ Resend email failed:', error);
+    return false;
+  }
+}
+
+/**
+ * Send email using AWS SES (as per technical specs)
+ */
+async function sendWithAWSSES(options: EmailOptions, recipients: string[]): Promise<boolean> {
+  try {
+    // Dynamic import to avoid requiring AWS SDK if not used
+    const { SESClient, SendEmailCommand } = await import('@aws-sdk/client-ses');
+    
+    const sesClient = new SESClient({
+      region: process.env.AWS_REGION || 'us-east-1',
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+      },
+    });
+    
+    const command = new SendEmailCommand({
+      Source: `${process.env.SES_FROM_NAME || 'Practo CMS'} <${process.env.SES_FROM_EMAIL}>`,
+      Destination: { ToAddresses: recipients },
+      Message: {
+        Subject: { Data: options.subject, Charset: 'UTF-8' },
+        Body: {
+          Html: { Data: options.html, Charset: 'UTF-8' },
+          ...(options.text && { Text: { Data: options.text, Charset: 'UTF-8' } }),
+        },
+      },
+    });
+    
+    await sesClient.send(command);
+    console.log(`✅ Email sent via AWS SES to: ${recipients.join(', ')}`);
+    return true;
+  } catch (error: any) {
+    console.error('❌ AWS SES email failed:', error);
     return false;
   }
 }
