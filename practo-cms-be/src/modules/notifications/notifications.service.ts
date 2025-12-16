@@ -68,7 +68,7 @@ export class NotificationService {
 
       // Add job to queue
       await notificationQueue.add('send-notification', jobData, {
-        priority: 1, // High priority for notifications
+        priority: 1,
       });
 
       console.log(`📬 Notification event queued: ${payload.eventType} for ${jobData.recipientIds.length} recipients`);
@@ -77,6 +77,8 @@ export class NotificationService {
       // Don't throw - notifications shouldn't break workflow
     }
   }
+
+
 
   /**
    * Build notification job data based on event type

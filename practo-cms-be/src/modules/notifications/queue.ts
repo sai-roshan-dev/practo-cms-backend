@@ -7,38 +7,54 @@
 import Bull from 'bull';
 import Redis from 'ioredis';
 
-// Redis connection configuration
+// Redis connection configuration for Upstash
 const redisConfig: any = {
-  maxRetriesPerRequest: 3, // Limit retries for production
+  maxRetriesPerRequest: 20, // Increase retries for Upstash
   enableReadyCheck: false,
-  connectTimeout: 10000, // 10 seconds
-  lazyConnect: true,
+  connectTimeout: 60000, // 60 seconds for Upstash
+  commandTimeout: 5000,
+  retryDelayOnFailover: 100,
+  lazyConnect: false, // Connect immediately
+  // Upstash TLS configuration
+  tls: {
+    rejectUnauthorized: false,
+    servername: 'relative-cub-24032.upstash.io'
+  },
+  family: 4, // IPv4 only
+  keepAlive: 30000,
+  db: 0,
 };
 
-// Support both REDIS_URL and individual config
+// Parse Upstash Redis URL for better connection handling
+let redisConnectionConfig;
 if (process.env.REDIS_URL) {
-  redisConfig.host = undefined;
-  redisConfig.port = undefined;
-  redisConfig.password = undefined;
+  // Use REDIS_URL directly for Upstash
+  redisConnectionConfig = process.env.REDIS_URL;
 } else {
-  redisConfig.host = process.env.REDIS_HOST || 'localhost';
-  redisConfig.port = parseInt(process.env.REDIS_PORT || '6379');
-  if (process.env.REDIS_PASSWORD) {
-    redisConfig.password = process.env.REDIS_PASSWORD;
-  }
+  // Fallback to individual config
+  redisConnectionConfig = {
+    ...redisConfig,
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT || '6379'),
+    password: process.env.REDIS_PASSWORD || undefined,
+  };
 }
 
-// Create notification queue
+// Create notification queue with Upstash-optimized settings
 export const notificationQueue = new Bull('notifications', {
-  redis: process.env.REDIS_URL || redisConfig,
+  redis: redisConnectionConfig,
+  settings: {
+    stalledInterval: 30 * 1000, // 30 seconds
+    maxStalledCount: 1,
+  },
   defaultJobOptions: {
     attempts: 3,
     backoff: {
       type: 'exponential',
-      delay: 2000, // Start with 2 seconds
+      delay: 2000,
     },
-    removeOnComplete: 100, // Keep last 100 completed jobs
-    removeOnFail: 500, // Keep last 500 failed jobs
+    removeOnComplete: 100,
+    removeOnFail: 500,
   },
 });
 
