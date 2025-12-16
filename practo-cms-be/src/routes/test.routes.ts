@@ -39,26 +39,40 @@ router.post('/notification', async (req, res) => {
 // Get queue stats
 router.get('/queue-stats', async (req, res) => {
   try {
-    const [waiting, active, completed, failed] = await Promise.all([
+    // Test Redis connection first
+    const redisUrl = process.env.REDIS_URL;
+    if (!redisUrl) {
+      return res.status(500).json({ error: 'REDIS_URL not configured' });
+    }
+
+    // Try to get queue stats with timeout
+    const timeout = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Redis connection timeout')), 5000)
+    );
+
+    const statsPromise = Promise.all([
       notificationQueue.getWaiting(),
       notificationQueue.getActive(), 
       notificationQueue.getCompleted(),
       notificationQueue.getFailed()
     ]);
 
+    const [waiting, active, completed, failed] = await Promise.race([statsPromise, timeout]);
+
     res.json({
+      status: 'connected',
+      redisUrl: redisUrl.substring(0, 20) + '...', // Hide full URL
       waiting: waiting.length,
       active: active.length,
       completed: completed.length,
-      failed: failed.length,
-      jobs: {
-        waiting: waiting.map(j => ({ id: j.id, data: j.data })),
-        completed: completed.slice(-5).map(j => ({ id: j.id, data: j.data })),
-        failed: failed.slice(-5).map(j => ({ id: j.id, data: j.data, error: j.failedReason }))
-      }
+      failed: failed.length
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      status: 'error',
+      error: error.message,
+      redisUrl: process.env.REDIS_URL ? 'configured' : 'missing'
+    });
   }
 });
 
