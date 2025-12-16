@@ -88,7 +88,41 @@ export function startNotificationWorker() {
     return await processNotificationJob(job);
   });
 
+  // Process test email jobs
+  notificationQueue.process('send-test-email', async (job) => {
+    return await processTestEmailJob(job);
+  });
+
   console.log('✅ Notification worker started and listening for jobs');
+}
+
+/**
+ * Process test email job (sends directly to specified email)
+ */
+async function processTestEmailJob(job: any) {
+  const { to, subject, html } = job.data;
+  
+  console.log(`📧 Processing test email to: ${to}`);
+
+  try {
+    const { sendEmail } = await import('./email.service.js');
+    
+    const success = await sendEmail({
+      to: to,
+      subject: subject,
+      html: html
+    });
+
+    if (success) {
+      console.log(`✅ Test email sent successfully to: ${to}`);
+      return { success: true, recipient: to };
+    } else {
+      throw new Error('Email sending failed');
+    }
+  } catch (error: any) {
+    console.error(`❌ Test email failed:`, error);
+    throw error;
+  }
 }
 
 // Auto-start if this file is run directly
