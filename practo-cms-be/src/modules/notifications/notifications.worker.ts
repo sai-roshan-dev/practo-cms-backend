@@ -100,7 +100,7 @@ export function startNotificationWorker() {
  * Process test email job (sends directly to specified email)
  */
 async function processTestEmailJob(job: any) {
-  const { to, subject, html } = job.data;
+  const { to, subject, html, from } = job.data;
   
   console.log(`📧 Processing test email to: ${to}`);
 
@@ -110,7 +110,8 @@ async function processTestEmailJob(job: any) {
     const success = await sendEmail({
       to: to,
       subject: subject,
-      html: html
+      html: html,
+      from: from || undefined // Use custom from if provided
     });
 
     if (success) {

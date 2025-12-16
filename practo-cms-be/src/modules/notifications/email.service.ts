@@ -10,6 +10,7 @@ export interface EmailOptions {
   subject: string;
   html: string;
   text?: string;
+  from?: string;
 }
 
 /**
@@ -90,7 +91,7 @@ async function sendWithResend(options: EmailOptions, recipients: string[]): Prom
     const resend = new Resend(process.env.RESEND_API_KEY);
     
     await resend.emails.send({
-      from: process.env.FROM_EMAIL || 'noreply@practocms.com',
+      from: options.from || process.env.FROM_EMAIL || 'onboarding@resend.dev',
       to: recipients,
       subject: options.subject,
       html: options.html,

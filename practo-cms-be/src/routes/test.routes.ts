@@ -52,9 +52,10 @@ router.post('/notification', async (req, res) => {
       `
     });
 
-    // Override recipient for test email
+    // Override recipient for test email - use Resend onboarding email for immediate testing
     const testEmailJob = await notificationQueue.add('send-test-email', {
       to: 'roshan.neelam@gamyam.co',
+      from: 'onboarding@resend.dev', // Use Resend's verified domain
       subject: 'Practo CMS - Email Service Test ✅',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -98,6 +99,26 @@ router.post('/notification', async (req, res) => {
       success: false, 
       error: error.message 
     });
+  }
+});
+
+// Test Resend configuration
+router.get('/email-config', async (req, res) => {
+  try {
+    const config = {
+      hasResendKey: !!process.env.RESEND_API_KEY,
+      resendKeyLength: process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.length : 0,
+      fromEmail: process.env.FROM_EMAIL || 'not set',
+      keyPrefix: process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.substring(0, 8) + '...' : 'not set'
+    };
+    
+    res.json({
+      status: 'email configuration check',
+      config: config,
+      recommendation: config.hasResendKey ? 'Resend configured' : 'Add RESEND_API_KEY to environment'
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 });
 
