@@ -116,6 +116,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'create_topic',
     'assign_topic',
     'view_all_topics',
+    'view_assigned_topics',
     'review_script',
     'comment_script',
     'approve_script',
