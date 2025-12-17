@@ -226,13 +226,13 @@ export async function getMeController(req: AuthRequest, res: Response) {
  */
 export async function changePasswordController(req: AuthRequest, res: Response) {
   try {
-    const { oldPassword, newPassword } = req.body;
+    const { currentPassword, newPassword } = req.body;
     const userId = req.user!.userId;
 
-    if (!oldPassword || !newPassword) {
+    if (!currentPassword || !newPassword) {
       return res.status(400).json({
         success: false,
-        message: "Old and new passwords are required",
+        message: "Current and new passwords are required",
       });
     }
 
@@ -251,11 +251,11 @@ export async function changePasswordController(req: AuthRequest, res: Response) 
       });
     }
 
-    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
       return res.status(400).json({ 
         success: false, 
-        message: "Old password incorrect" 
+        message: "Current password incorrect" 
       });
     }
 
