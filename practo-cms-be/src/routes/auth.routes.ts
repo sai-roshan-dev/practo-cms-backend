@@ -9,7 +9,10 @@ import {
   getMeController,
   changePasswordController, 
   setPasswordController,
-  refreshTokenController
+  refreshTokenController,
+  forgotPasswordController,
+  verifyResetTokenController,
+  resetPasswordController
 } from "../controllers/auth.controller.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
 
@@ -18,6 +21,9 @@ const router = Router();
 // Public routes
 router.post("/login", loginController);
 router.post("/oauth/google", googleOAuthController);
+router.post("/forgot-password", forgotPasswordController);
+router.post("/verify-reset-token", verifyResetTokenController);
+router.post("/reset-password", resetPasswordController);
 
 // Protected routes
 router.get("/me", authenticate, getMeController);

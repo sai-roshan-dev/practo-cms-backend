@@ -133,6 +133,8 @@ exports.Prisma.UserScalarFieldEnum = {
   specialty: 'specialty',
   city: 'city',
   googleId: 'googleId',
+  resetToken: 'resetToken',
+  resetTokenExpiry: 'resetTokenExpiry',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   lastLoginAt: 'lastLoginAt'

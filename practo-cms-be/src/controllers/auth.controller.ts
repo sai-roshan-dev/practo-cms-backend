@@ -12,6 +12,8 @@ import { OAuth2Client } from "google-auth-library";
 import { getUserPermissions } from "../config/permissions.js";
 import { UserRole } from "../generated/prisma/index.js";
 import type { AuthRequest } from "../middlewares/auth.middleware.js";
+import { sendEmail } from "../modules/notifications/email.service.js";
+import crypto from "crypto";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -360,6 +362,184 @@ export async function refreshTokenController(req: AuthRequest, res: Response) {
     return res.status(500).json({ 
       success: false, 
       message: "Server error" 
+    });
+  }
+}
+
+/**
+ * Forgot password - Send reset email
+ * POST /api/auth/forgot-password
+ */
+export async function forgotPasswordController(req: Request, res: Response) {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required"
+      });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    
+    // Always return success for security (don't reveal if email exists)
+    if (!user) {
+      return res.json({
+        success: true,
+        message: "If the email exists, a reset link has been sent"
+      });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpiry = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+
+    // Save token to database
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetToken,
+        resetTokenExpiry
+      }
+    });
+
+    // Send reset email
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
+
+    await sendEmail({
+      to: user.email,
+      subject: 'Reset Your Password - Practo CMS',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">Reset Your Password</h2>
+          <p>Hi ${user.firstName},</p>
+          <p>You requested to reset your password for Practo CMS. Click the button below to reset it:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetLink}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
+          </div>
+          <p>Or copy and paste this link in your browser:</p>
+          <p style="word-break: break-all; color: #666;">${resetLink}</p>
+          <p><strong>This link will expire in 30 minutes.</strong></p>
+          <p>If you didn't request this, please ignore this email.</p>
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+          <p style="color: #666; font-size: 12px;">Practo CMS Team</p>
+        </div>
+      `
+    });
+
+    return res.json({
+      success: true,
+      message: "If the email exists, a reset link has been sent"
+    });
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+}
+
+/**
+ * Verify reset token
+ * POST /api/auth/verify-reset-token
+ */
+export async function verifyResetTokenController(req: Request, res: Response) {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Token is required"
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { resetToken: token },
+      select: {
+        id: true,
+        email: true,
+        resetTokenExpiry: true
+      }
+    });
+
+    if (!user || !user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired token"
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Token is valid",
+      email: user.email
+    });
+  } catch (err) {
+    console.error('Verify reset token error:', err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+}
+
+/**
+ * Reset password with token
+ * POST /api/auth/reset-password
+ */
+export async function resetPasswordController(req: Request, res: Response) {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Token and new password are required"
+      });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters"
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { resetToken: token }
+    });
+
+    if (!user || !user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired token"
+      });
+    }
+
+    // Hash new password and clear reset token
+    const hashedPassword = await hashPassword(newPassword);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        resetToken: null,
+        resetTokenExpiry: null
+      }
+    });
+
+    return res.json({
+      success: true,
+      message: "Password reset successfully"
+    });
+  } catch (err) {
+    console.error('Reset password error:', err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
     });
   }
 }
