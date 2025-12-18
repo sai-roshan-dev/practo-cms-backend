@@ -27,7 +27,7 @@ RUN cp -r src/generated dist/generated || true
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
 
-EXPOSE 3000
+EXPOSE 5000
 
 # Use entrypoint script to run migrations before starting
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
